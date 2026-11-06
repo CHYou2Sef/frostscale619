@@ -9,6 +9,7 @@ import { z } from "zod";
 
 /** Valid ice product types for Tunisian ice manufacturers */
 export const ICE_TYPES = ["glacons", "ecailles", "blocs"] as const;
+export type IceType = (typeof ICE_TYPES)[number];
 
 /** Tunisian governorate cities (most common for ice manufacturers) */
 export const TUNISIAN_CITIES = [

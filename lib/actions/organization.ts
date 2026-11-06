@@ -38,7 +38,7 @@ export async function createOrganizationAction(
   // 2. Validate input
   const parsed = createOrganizationSchema.safeParse(input);
   if (!parsed.success) {
-    const firstError = parsed.error.errors[0]?.message ?? "Données invalides";
+    const firstError = parsed.error.issues[0]?.message ?? "Données invalides";
     return { success: false, error: firstError };
   }
 
@@ -122,7 +122,7 @@ export async function updateOrganizationAction(
   // 2. Validate input
   const parsed = updateOrganizationSchema.safeParse(input);
   if (!parsed.success) {
-    const firstError = parsed.error.errors[0]?.message ?? "Données invalides";
+    const firstError = parsed.error.issues[0]?.message ?? "Données invalides";
     return { success: false, error: firstError };
   }
 

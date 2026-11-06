@@ -1,110 +1,144 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+# FROSTSCALE619 — Multi-Tenant SaaS ERP
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+> ERP industriel multi-tenant pour les fabricants de glace en Tunisie (*Glaçons, Écailles, Blocs de glace*).
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+## Aperçu Technique — Phase 1 : Fondation
 
-## Features
+FROSTSCALE619 est un monolithe modulaire conçu pour un budget de développement de 0 $ et une empreinte mémoire légère (optimisé pour Linux 8 Go RAM).
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Proxy
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+### Pile Technologique
+- **Framework** : Next.js 16 (App Router) + React 19
+- **Base de données** : PostgreSQL hébergé sur Supabase
+- **Authentification & SSR** : `@supabase/ssr` avec cookies HTTP-only
+- **Sécurité des données** : PostgreSQL Row-Level Security (RLS) avec isolation stricte multi-tenant
+- **Validation** : Zod
+- **Style & UI** : Tailwind CSS + shadcn/ui + Lucide Icons
+- **Tests automatisés** : Vitest (Node.js test runner rapide & léger)
 
-## Demo
+---
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+## Modèle Multi-Tenant & Architecture
 
-## Deploy to Vercel
+Chaque entreprise manufacturière de glace constitue une **organisation** (`organization_id`).
 
-Vercel deployment will guide you through creating a Supabase account and project.
+```mermaid
+erDiagram
+    auth_users ||--|| profiles : "1:1"
+    profiles ||--o{ organization_members : "appartenance"
+    organizations ||--o{ organization_members : "membres"
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+    organizations {
+        uuid id PK
+        string name
+        string slug UK
+        string legal_name
+        string tax_id "Matricule Fiscal (Tunisie)"
+        string phone
+        string address
+        string city "Sfax, Tunis, Bizerte..."
+        string country "TN"
+        string currency "TND"
+        text_array ice_types "glacons, ecailles, blocs"
+    }
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
-
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
-
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
-
-## Clone and run locally
-
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
-
-2. Create a Next.js app using the Supabase Starter template npx command
-
-   ```bash
-   npx create-next-app --example with-supabase with-supabase-app
-   ```
-
-   ```bash
-   yarn create next-app --example with-supabase with-supabase-app
-   ```
-
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
-
-3. Use `cd` to change into the app's directory
-
-   ```bash
-   cd with-supabase-app
-   ```
-
-4. Rename `.env.example` to `.env.local` and update the following:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
+    organization_members {
+        uuid id PK
+        uuid organization_id FK
+        uuid user_id FK
+        app_role role "owner | admin | operator | driver"
+        membership_status status "active | suspended | invited"
+    }
 ```
 
-> [!NOTE]
-> This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
-> Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
-> See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
+### Rôles & Permissions
 
-Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
+| Rôle | Périmètre d'action |
+| :--- | :--- |
+| **`owner`** | Dirigeant / Propriétaire de l'usine. Gestion complète, matricule fiscal, membres et suppression. |
+| **`admin`** | Gestionnaire d'usine / Responsable de site. Gestion des installations et des tournées. |
+| **`operator`** | Opérateur de production. Saisie des lots de glace, pesées et suivi des machines (Phase 2). |
+| **`driver`** | Chauffeur livreur. Accès aux bons de livraison et consignes de bacs isothermes. |
 
-5. You can now run the Next.js local development server:
+---
 
-   ```bash
-   npm run dev
-   ```
+## Architectural Decision Records (ADR)
 
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
+### ADR-001 : Isolation Multi-Tenant par PostgreSQL RLS
+- **Décision** : Enforcer l'isolation multi-tenant au niveau du moteur PostgreSQL via Row Level Security (RLS) plutôt qu'uniquement dans la couche applicative.
+- **Justification** : Élimine le risque de fuite de données inter-entreprises (BOLA / IDOR) si un développeur oublie un filtre `where organization_id = ...` dans une requête.
+- **Optimisation** : Toutes les politiques RLS encapsulent les appels de fonction dans `(select auth.uid())` pour éviter la réévaluation par ligne sur les parcours séquentiels.
 
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
+### ADR-002 : Résolution du Contexte Tenant Côté Serveur
+- **Décision** : Ne jamais faire confiance à un `organization_id` provenant du navigateur (query string ou body non vérifié).
+- **Justification** : Le serveur valide que l'utilisateur connecté possède une appartenance active (`organization_members`) avant toute action ou rendu de page.
 
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+---
 
-## Feedback and issues
+## Installation & Démarrage Local
 
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
+### Prérequis
+- Node.js 24 LTS
+- Compte Supabase (base de données de développement hébergée)
 
-## More Supabase examples
+### 1. Variables d'Environnement
+Créer le fichier `.env.local` à la racine de `frostscale619/` :
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://[VOTRE_PROJET].supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
 
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+### 2. Application de la Migration Supabase
+Exécuter le script SQL suivant dans le **SQL Editor** de votre tableau de bord Supabase :
+```text
+supabase/migrations/20261106000001_phase1_initial_schema.sql
+```
+Ce script crée les types enum, les tables `profiles`, `organizations`, `organization_members`, les fonctions de sécurité et l'ensemble des politiques RLS.
+
+### 3. Démarrage du Serveur de Développement
+```bash
+npm run dev
+```
+L'application est accessible sur [http://localhost:3000](http://localhost:3000).
+
+### 4. Lancement des Tests Automatisés
+```bash
+npm test
+```
+
+### 5. Construction de Production
+```bash
+npm run build
+npm start
+```
+
+---
+
+## Structure du Projet
+
+```text
+frostscale619/
+├── app/
+│   ├── auth/                # Connexion, Inscription, Réinitialisation
+│   ├── dashboard/           # Tableau de bord usine (protégé par tenant)
+│   ├── onboarding/          # Configuration initiale de l'entreprise
+│   ├── settings/            # Paramètres de l'usine (filtré par rôle)
+│   ├── globals.css          # Thème cold-chain (Tailwind CSS v3)
+│   └── layout.tsx           # Layout racine avec ThemeProvider
+├── components/
+│   ├── dashboard/           # Vue d'ensemble usine & lignes de glace
+│   ├── layout/              # En-tête multi-tenant avec badge de rôle
+│   ├── onboarding/          # Formulaire d'onboarding usine
+│   ├── settings/            # Formulaire de modification coordonnées
+│   └── ui/                  # Composants shadcn/ui
+├── lib/
+│   ├── actions/             # Server actions Zod-validées
+│   ├── supabase/            # Clients SSR (client, server, proxy)
+│   ├── tenant/              # Résolution du contexte d'organisation
+│   └── validations/         # Schémas Zod (auth, organization)
+├── supabase/
+│   └── migrations/          # Migrations SQL versionnées
+├── types/
+│   ├── auth.ts              # Types de contexte d'authentification
+│   └── database.ts          # Types TypeScript miroirs de PostgreSQL
+└── __tests__/               # Tests unitaires Vitest
+```

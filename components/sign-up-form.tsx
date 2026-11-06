@@ -1,120 +1,185 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { signUpSchema } from "@/lib/validations/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Snowflake, Loader2 } from "lucide-react";
 
-export function SignUpForm({
-  className,
-  ...props
-}: React.ComponentPropsWithoutRef<"div">) {
+export function SignUpForm() {
+  const router = useRouter();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [repeatPassword, setRepeatPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
-  const handleSignUp = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
-    setIsLoading(true);
     setError(null);
+    setFieldErrors({});
 
-    if (password !== repeatPassword) {
-      setError("Passwords do not match");
-      setIsLoading(false);
+    const parsed = signUpSchema.safeParse({
+      full_name: fullName,
+      email,
+      password,
+      confirmPassword,
+    });
+
+    if (!parsed.success) {
+      const errors: Record<string, string> = {};
+      parsed.error.issues.forEach((err) => {
+        if (err.path[0]) {
+          errors[String(err.path[0])] = err.message;
+        }
+      });
+      setFieldErrors(errors);
       return;
     }
 
+    setLoading(true);
+
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
+      const supabase = createClient();
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: parsed.data.email,
+        password: parsed.data.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/protected`,
+          data: {
+            full_name: parsed.data.full_name,
+          },
+          emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       });
-      if (error) throw error;
-      router.push("/auth/sign-up-success");
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+
+      if (signUpError) {
+        setError(signUpError.message);
+        return;
+      }
+
+      // If session is immediately established (email confirmation disabled in dev)
+      if (data?.session) {
+        router.push("/onboarding");
+        router.refresh();
+      } else {
+        router.push("/auth/sign-up-success");
+      }
+    } catch {
+      setError("Une erreur inattendue est survenue. Veuillez réessayer.");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignUp}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                </div>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="repeat-password">Repeat Password</Label>
-                </div>
-                <Input
-                  id="repeat-password"
-                  type="password"
-                  required
-                  value={repeatPassword}
-                  onChange={(e) => setRepeatPassword(e.target.value)}
-                />
-              </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating an account..." : "Sign up"}
-              </Button>
+    <Card className="w-full max-w-md shadow-lg border-muted">
+      <CardHeader className="space-y-1 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-2">
+          <Snowflake className="h-6 w-6" />
+        </div>
+        <CardTitle className="text-2xl font-bold">Créer votre compte</CardTitle>
+        <CardDescription>
+          Inscrivez votre usine ou unité de production de glace
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+              {error}
             </div>
-            <div className="mt-4 text-center text-sm">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="underline underline-offset-4">
-                Login
-              </Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Nom complet ou Responsable</Label>
+            <Input
+              id="fullName"
+              placeholder="Mohamed Ben Salem"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              disabled={loading}
+              required
+            />
+            {fieldErrors.full_name && (
+              <p className="text-xs text-destructive">{fieldErrors.full_name}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email">Adresse e-mail professionnelle</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="contact@usinedeglace.tn"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+              autoComplete="email"
+              required
+            />
+            {fieldErrors.email && (
+              <p className="text-xs text-destructive">{fieldErrors.email}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">Mot de passe</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+              autoComplete="new-password"
+              required
+            />
+            {fieldErrors.password && (
+              <p className="text-xs text-destructive">{fieldErrors.password}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={loading}
+              autoComplete="new-password"
+              required
+            />
+            {fieldErrors.confirmPassword && (
+              <p className="text-xs text-destructive">{fieldErrors.confirmPassword}</p>
+            )}
+          </div>
+
+          <Button type="submit" className="w-full gap-2" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Création en cours...
+              </>
+            ) : (
+              "Créer mon compte"
+            )}
+          </Button>
+
+          <p className="text-center text-xs text-muted-foreground">
+            Vous avez déjà un compte ?{" "}
+            <Link href="/auth/login" className="text-primary font-medium hover:underline">
+              Se connecter
+            </Link>
+          </p>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
