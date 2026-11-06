@@ -59,10 +59,18 @@ export async function createOrganizationAction(
     slug = `${slug}-${Date.now().toString(36)}`;
   }
 
-  // 4. Create organization (RLS allows insert for authenticated users)
-  const { data: org, error: orgError } = await supabase
+  // 4. Ensure profile exists for this user (in case auth trigger didn't fire)
+  await supabase
+    .from("profiles")
+    .upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
+
+  // 5. Generate UUID in advance to avoid RLS chicken-and-egg on RETURNING *
+  const orgId = crypto.randomUUID();
+
+  const { error: orgError } = await supabase
     .from("organizations")
     .insert({
+      id: orgId,
       name,
       slug,
       legal_name: legal_name || null,
@@ -73,20 +81,21 @@ export async function createOrganizationAction(
       country: "TN",
       currency: "TND",
       ice_types,
-    })
-    .select()
-    .single();
+    });
 
-  if (orgError || !org) {
+  if (orgError) {
     console.error("Error creating organization:", orgError);
-    return { success: false, error: "Impossible de créer l'entreprise. Veuillez réessayer." };
+    return {
+      success: false,
+      error: `Erreur base de données: ${orgError.message || "Impossible de créer l'entreprise."}`,
+    };
   }
 
-  // 5. Add creator as owner
+  // 6. Add creator as owner membership (now user is an active member)
   const { error: memberError } = await supabase
     .from("organization_members")
     .insert({
-      organization_id: org.id,
+      organization_id: orgId,
       user_id: user.id,
       role: "owner",
       status: "active",
@@ -94,13 +103,22 @@ export async function createOrganizationAction(
 
   if (memberError) {
     console.error("Error creating membership:", memberError);
-    // Clean up the organization if membership creation failed
-    await supabase.from("organizations").delete().eq("id", org.id);
-    return { success: false, error: "Impossible de configurer le membre. Veuillez réessayer." };
+    await supabase.from("organizations").delete().eq("id", orgId);
+    return {
+      success: false,
+      error: `Erreur adhésion: ${memberError.message || "Impossible de configurer le propriétaire."}`,
+    };
   }
 
-  // 6. Set the new org as active
-  await setActiveOrganization(org.id);
+  // 7. Fetch the created organization (now visible under RLS since user is a member)
+  const { data: org } = await supabase
+    .from("organizations")
+    .select()
+    .eq("id", orgId)
+    .single();
+
+  // 8. Set the new org as active
+  await setActiveOrganization(orgId);
 
   return { success: true, data: org as Organization };
 }
