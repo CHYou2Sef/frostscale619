@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "supabase-dev-readonly": {
+      "serverUrl": "https://mcp.supabase.com/mcp?project_ref=https://galnzljejgocueflixus.supabase.co&read_only=true&features=docs%2Cdatabase%2Cdebugging"
+    }
+  }
+}
