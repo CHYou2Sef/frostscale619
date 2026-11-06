@@ -5,8 +5,13 @@
 import { z } from "zod";
 
 export const STORAGE_TYPES = ["cold_room", "flake_silo", "buffer_pit"] as const;
+export type StorageLocationType = (typeof STORAGE_TYPES)[number];
+
 export const MACHINE_STATUSES = ["operational", "maintenance", "offline"] as const;
+export type MachineStatus = (typeof MACHINE_STATUSES)[number];
+
 export const ICE_PRODUCTION_TYPES = ["glacons", "ecailles", "blocs"] as const;
+export type IceProductionType = (typeof ICE_PRODUCTION_TYPES)[number];
 
 export const createFacilitySchema = z.object({
   name: z

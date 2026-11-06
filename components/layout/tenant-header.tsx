@@ -6,7 +6,7 @@ import { LogoutButton } from "@/components/logout-button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Badge } from "@/components/ui/badge";
 import type { TenantContext } from "@/types/auth";
-import { Building2, Settings, LayoutDashboard, Snowflake } from "lucide-react";
+import { Building2, Settings, LayoutDashboard, Snowflake, Factory, Package } from "lucide-react";
 
 interface TenantHeaderProps {
   context: TenantContext;
@@ -29,6 +29,18 @@ export function TenantHeader({ context }: TenantHeaderProps) {
       label: "Tableau de Bord",
       icon: LayoutDashboard,
       active: pathname === "/dashboard",
+    },
+    {
+      href: "/facilities",
+      label: "Installations & Froid",
+      icon: Factory,
+      active: pathname.startsWith("/facilities"),
+    },
+    {
+      href: "/products",
+      label: "Produits & Tarifs",
+      icon: Package,
+      active: pathname.startsWith("/products"),
     },
     {
       href: "/settings",
