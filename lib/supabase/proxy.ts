@@ -55,6 +55,10 @@ export async function updateSession(request: NextRequest) {
     const isOnboarding = pathname === "/onboarding";
     const isTenantRoute =
       pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/facilities") ||
+      pathname.startsWith("/products") ||
+      pathname.startsWith("/production") ||
+      pathname.startsWith("/inventory") ||
       pathname.startsWith("/settings");
 
     // For tenant routes, check if user has an org cookie set
