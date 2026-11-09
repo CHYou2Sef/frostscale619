@@ -1,7 +1,7 @@
 /**
  * FROSTSCALE619 — Database types
  *
- * Mirrors the PostgreSQL schema defined in Phase 1 & Phase 2 migrations.
+ * Mirrors the PostgreSQL schema defined in Phase 1, Phase 2, & Phase 3 migrations.
  * These types are the single source of truth for the application layer.
  */
 
@@ -20,6 +20,15 @@ export type StorageLocationType = "cold_room" | "flake_silo" | "buffer_pit";
 export type MachineStatus = "operational" | "maintenance" | "offline";
 
 export type ProductUnit = "sac" | "kg" | "bloc" | "tonne" | "caisse";
+
+export type BatchStatus = "in_progress" | "completed" | "cancelled";
+
+export type InventoryMovementType =
+  | "production_in"
+  | "dispatch_out"
+  | "transfer"
+  | "melt_loss"
+  | "adjustment";
 
 // -----------------------------------------------------------------------------
 // Table row types
@@ -117,7 +126,49 @@ export interface IceProduct {
 }
 
 // -----------------------------------------------------------------------------
-// Join / view types (used in UI)
+// Phase 3: Production Batches & Append-Only Inventory Movements
+// -----------------------------------------------------------------------------
+
+export interface ProductionBatch {
+  id: string;
+  organization_id: string;
+  facility_id: string;
+  machine_id: string;
+  product_id: string;
+  storage_location_id: string;
+  batch_number: string;
+  status: BatchStatus;
+  quantity_units: number;
+  total_weight_kg: number;
+  runtime_hours: number;
+  water_meter_m3: number | null;
+  electricity_kwh: number | null;
+  notes: string | null;
+  operator_id: string;
+  started_at: string;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryMovement {
+  id: string;
+  organization_id: string;
+  facility_id: string;
+  storage_location_id: string;
+  product_id: string;
+  movement_type: InventoryMovementType;
+  quantity_delta: number;
+  weight_delta_kg: number;
+  reference_batch_id: string | null;
+  reference_document_no: string | null;
+  reason: string | null;
+  performed_by: string;
+  created_at: string;
+}
+
+// -----------------------------------------------------------------------------
+// Join / View types (used in UI)
 // -----------------------------------------------------------------------------
 
 export interface OrganizationWithRole extends Organization {
@@ -131,4 +182,31 @@ export interface MemberWithProfile extends OrganizationMember {
 export interface FacilityWithDetails extends Facility {
   storage_locations: StorageLocation[];
   machines: Machine[];
+}
+
+export interface ProductionBatchWithDetails extends ProductionBatch {
+  facility: Facility;
+  machine: Machine;
+  product: IceProduct;
+  storage_location: StorageLocation;
+  operator: Profile;
+}
+
+export interface InventoryMovementWithDetails extends InventoryMovement {
+  facility: Facility;
+  storage_location: StorageLocation;
+  product: IceProduct;
+  performer: Profile;
+}
+
+export interface StockLevelSummary {
+  storage_location_id: string;
+  storage_location_name: string;
+  facility_name: string;
+  product_id: string;
+  product_name: string;
+  ice_type: IceType;
+  unit: ProductUnit;
+  current_quantity: number;
+  current_weight_kg: number;
 }
