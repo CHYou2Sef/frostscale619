@@ -1,9 +1,11 @@
 "use client";
 
 import type { TenantContext } from "@/types/auth";
+import type { Client } from "@/types/database";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ClientTrackingWrapper } from "@/components/dashboard/client-tracking-wrapper";
 import Link from "next/link";
 import {
   Factory,
@@ -15,13 +17,16 @@ import {
   FileText,
   Phone,
   ArrowRight,
+  Activity,
+  Boxes,
 } from "lucide-react";
 
 interface IceFactoryOverviewProps {
   context: TenantContext;
+  clients?: Client[];
 }
 
-export function IceFactoryOverview({ context }: IceFactoryOverviewProps) {
+export function IceFactoryOverview({ context, clients = [] }: IceFactoryOverviewProps) {
   const { organization, role } = context;
 
   const iceTypeLabels = {
@@ -125,8 +130,10 @@ export function IceFactoryOverview({ context }: IceFactoryOverviewProps) {
               </CardHeader>
               <CardContent className="pt-2">
                 <div className="flex items-center justify-between text-xs text-muted-foreground border-t pt-3">
-                  <span>Phase 2 : Lots & Peseuses</span>
-                  <span className="font-mono">En attente</span>
+                  <span>Lots & Froid</span>
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                    Opérationnel
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -134,7 +141,10 @@ export function IceFactoryOverview({ context }: IceFactoryOverviewProps) {
         </div>
       </div>
 
-      {/* Quick Metrics & Foundation Status */}
+      {/* Geolocated Client Tracking Map (react-leaflet + OpenStreetMap) */}
+      <ClientTrackingWrapper clients={clients} />
+
+      {/* Quick Metrics & System Status */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -176,26 +186,40 @@ export function IceFactoryOverview({ context }: IceFactoryOverviewProps) {
         </Card>
       </div>
 
-      {/* Next Phase Preparation Banner */}
+      {/* Quick Access to Operational Modules */}
       <Card className="border-dashed bg-muted/20">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <h3 className="font-semibold text-base flex items-center gap-2">
                 <Package className="h-4 w-4 text-primary" />
-                Fondation Technique (Phase 1) Active
+                Modules Industriels & Expéditions Actifs
               </h3>
               <p className="text-sm text-muted-foreground">
-                L&apos;authentification Supabase SSR, l&apos;isolation multi-tenant RLS et la gestion des profils
-                et organisations sont opérationnelles.
+                Lots de fabrication, stocks froids immuables, carte des mareyeurs et facturation TND
+                en vigueur.
               </p>
             </div>
-            <Button asChild variant="outline" size="sm" className="gap-1 shrink-0">
-              <Link href="/settings">
-                Gérer l&apos;Entreprise
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button asChild variant="outline" size="sm" className="gap-1 shrink-0">
+                <Link href="/production">
+                  <Activity className="h-3.5 w-3.5" />
+                  Production
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="gap-1 shrink-0">
+                <Link href="/inventory">
+                  <Boxes className="h-3.5 w-3.5" />
+                  Stocks Froids
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="gap-1 shrink-0">
+                <Link href="/settings">
+                  Entreprise
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

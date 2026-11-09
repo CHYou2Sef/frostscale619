@@ -210,3 +210,40 @@ export interface StockLevelSummary {
   current_quantity: number;
   current_weight_kg: number;
 }
+
+// =============================================================================
+// Phase 4: Clients, Commercial Tracking & Logistics Types
+// =============================================================================
+
+export type ClientCategory =
+  | "mareyeur"
+  | "poissonnerie"
+  | "chr"
+  | "peche_artisanale"
+  | "industriel";
+
+export type DeliveryStatus = "idle" | "pending" | "in_transit" | "delivered";
+
+export interface Client {
+  id: string;
+  organization_id: string;
+  name: string;
+  slug: string;
+  category: ClientCategory;
+  city: string;
+  port_or_zone?: string | null;
+  address?: string | null;
+  latitude: number;
+  longitude: number;
+  phone?: string | null;
+  contact_name?: string | null;
+  tax_id?: string | null;
+  ice_preference: IceType;
+  containers_balance: number;
+  delivery_status: DeliveryStatus;
+  last_order_amount_tnd: number;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { resolveTenantContext } from "@/lib/tenant/context";
+import { getClientsAction } from "@/lib/actions/clients";
 import { IceFactoryOverview } from "@/components/dashboard/ice-factory-overview";
 
 export const metadata = {
@@ -16,5 +17,9 @@ export default async function DashboardPage() {
     redirect("/auth/login");
   }
 
-  return <IceFactoryOverview context={result.context} />;
+  const clientsResult = await getClientsAction();
+  const clients = clientsResult.success ? clientsResult.data : [];
+
+  return <IceFactoryOverview context={result.context} clients={clients} />;
 }
+
