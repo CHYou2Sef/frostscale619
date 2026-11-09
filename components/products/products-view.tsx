@@ -6,6 +6,8 @@ import type { IceProduct } from "@/types/database";
 import type { TenantContext } from "@/types/auth";
 import {
   createProductAction,
+  updateProductAction,
+  deleteProductAction,
   toggleProductActiveAction,
 } from "@/lib/actions/products";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,13 +18,13 @@ import { Label } from "@/components/ui/label";
 import {
   Package,
   Plus,
-  Tag,
-  Scale,
+  Pencil,
+  Trash2,
   CheckCircle2,
   XCircle,
   Loader2,
   X,
-  Snowflake,
+  AlertTriangle,
 } from "lucide-react";
 
 interface ProductsViewProps {
@@ -35,16 +37,24 @@ export function ProductsView({ initialProducts, context }: ProductsViewProps) {
   const { role } = context;
   const canManage = ["owner", "admin"].includes(role);
 
-  const [products, setProducts] = useState<IceProduct[]>(initialProducts);
+  const [products] = useState<IceProduct[]>(initialProducts);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<IceProduct | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<IceProduct | null>(null);
 
-  // Form state
+  // Add Form state
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [iceType, setIceType] = useState<"glacons" | "ecailles" | "blocs">("glacons");
   const [unit, setUnit] = useState<"sac" | "kg" | "bloc" | "tonne" | "caisse">("sac");
   const [weightKg, setWeightKg] = useState("5.0");
   const [priceTnd, setPriceTnd] = useState("3.500");
+
+  // Edit Form state
+  const [editName, setEditName] = useState("");
+  const [editWeightKg, setEditWeightKg] = useState("");
+  const [editPriceTnd, setEditPriceTnd] = useState("");
+  const [editUnit, setEditUnit] = useState<"sac" | "kg" | "bloc" | "tonne" | "caisse">("sac");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +82,54 @@ export function ProductsView({ initialProducts, context }: ProductsViewProps) {
     setShowAddModal(false);
     setName("");
     setCode("");
+    router.refresh();
+  };
+
+  const openEditModal = (p: IceProduct) => {
+    setEditingProduct(p);
+    setEditName(p.name);
+    setEditWeightKg(p.nominal_weight_kg.toString());
+    setEditPriceTnd(Number(p.unit_price_tnd).toFixed(3));
+    setEditUnit(p.unit);
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    setLoading(true);
+    setError(null);
+
+    const res = await updateProductAction(editingProduct.id, {
+      name: editName,
+      unit: editUnit,
+      nominal_weight_kg: parseFloat(editWeightKg) || 1,
+      unit_price_tnd: parseFloat(editPriceTnd) || 0,
+    });
+
+    setLoading(false);
+    if (!res.success) {
+      setError(res.error);
+      return;
+    }
+
+    setEditingProduct(null);
+    router.refresh();
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!deletingProduct) return;
+    setLoading(true);
+    setError(null);
+
+    const res = await deleteProductAction(deletingProduct.id);
+    setLoading(false);
+
+    if (!res.success) {
+      setError(res.error);
+      return;
+    }
+
+    setDeletingProduct(null);
     router.refresh();
   };
 
@@ -116,7 +174,7 @@ export function ProductsView({ initialProducts, context }: ProductsViewProps) {
         </div>
       )}
 
-      {/* Products Table / Cards */}
+      {/* Products Grid */}
       {products.length === 0 ? (
         <Card className="text-center p-12 border-dashed">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-4">
@@ -175,36 +233,60 @@ export function ProductsView({ initialProducts, context }: ProductsViewProps) {
                 <div className="flex items-center justify-between border-t pt-3">
                   <div>
                     <span className="text-xs text-muted-foreground block">Prix Unitaire</span>
-                    <span className="text-lg font-bold text-primary">
-                      {Number(p.unit_price_tnd).toFixed(3)} <small className="text-xs">TND</small>
+                    <span className="text-lg font-bold text-primary font-mono">
+                      {Number(p.unit_price_tnd).toFixed(3)} <small className="text-xs font-sans">TND</small>
                     </span>
                   </div>
 
-                  {canManage && (
-                    <button
-                      type="button"
-                      onClick={() => handleToggleActive(p.id, p.is_active)}
-                      className="focus:outline-none"
-                      title={p.is_active ? "Désactiver le produit" : "Activer le produit"}
-                    >
-                      <Badge
-                        variant={p.is_active ? "default" : "outline"}
-                        className="cursor-pointer text-xs flex items-center gap-1"
-                      >
-                        {p.is_active ? (
-                          <>
-                            <CheckCircle2 className="h-3 w-3" />
-                            Actif
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="h-3 w-3" />
-                            Inactif
-                          </>
-                        )}
-                      </Badge>
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {canManage && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(p.id, p.is_active)}
+                          className="focus:outline-none"
+                          title={p.is_active ? "Désactiver" : "Activer"}
+                        >
+                          <Badge
+                            variant={p.is_active ? "default" : "outline"}
+                            className="cursor-pointer text-xs flex items-center gap-1"
+                          >
+                            {p.is_active ? (
+                              <>
+                                <CheckCircle2 className="h-3 w-3" />
+                                Actif
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="h-3 w-3" />
+                                Inactif
+                              </>
+                            )}
+                          </Badge>
+                        </button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => openEditModal(p)}
+                          title="Modifier"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => setDeletingProduct(p)}
+                          title="Supprimer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -249,7 +331,7 @@ export function ProductsView({ initialProducts, context }: ProductsViewProps) {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="prodType">Type de Glace</Label>
                     <select
@@ -258,40 +340,43 @@ export function ProductsView({ initialProducts, context }: ProductsViewProps) {
                       onChange={(e) =>
                         setIceType(e.target.value as "glacons" | "ecailles" | "blocs")
                       }
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm"
                     >
-                      <option value="glacons">Glaçons 🧊</option>
-                      <option value="ecailles">Écailles ❄️</option>
-                      <option value="blocs">Blocs 🧊</option>
+                      <option value="glacons">🧊 Glaçons</option>
+                      <option value="ecailles">❄️ Écailles</option>
+                      <option value="blocs">🧊 Blocs</option>
                     </select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="prodUnit">Unité de Vente</Label>
+                    <Label htmlFor="prodUnit">Conditionnement</Label>
                     <select
                       id="prodUnit"
                       value={unit}
                       onChange={(e) =>
-                        setUnit(e.target.value as "sac" | "kg" | "bloc" | "tonne" | "caisse")
+                        setUnit(
+                          e.target.value as "sac" | "kg" | "bloc" | "tonne" | "caisse"
+                        )
                       }
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm"
                     >
                       <option value="sac">Sac</option>
                       <option value="kg">Kilogramme (kg)</option>
-                      <option value="caisse">Caisse isotherme</option>
-                      <option value="bloc">Pain / Bloc</option>
+                      <option value="bloc">Bloc</option>
                       <option value="tonne">Tonne</option>
+                      <option value="caisse">Caisse</option>
                     </select>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="prodWeight">Poids Nominal (kg)</Label>
+                    <Label htmlFor="prodWeight">Poids Nominal (kg) *</Label>
                     <Input
                       id="prodWeight"
                       type="number"
                       step="0.1"
+                      min="0.1"
                       value={weightKg}
                       onChange={(e) => setWeightKg(e.target.value)}
                       required
@@ -299,11 +384,12 @@ export function ProductsView({ initialProducts, context }: ProductsViewProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="prodPrice">Prix Unitaire (TND)</Label>
+                    <Label htmlFor="prodPrice">Prix Unitaire HT (TND) *</Label>
                     <Input
                       id="prodPrice"
                       type="number"
-                      step="0.100"
+                      step="0.001"
+                      min="0"
                       value={priceTnd}
                       onChange={(e) => setPriceTnd(e.target.value)}
                       required
@@ -311,7 +397,7 @@ export function ProductsView({ initialProducts, context }: ProductsViewProps) {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2">
+                <div className="flex justify-end gap-3 pt-4">
                   <Button
                     type="button"
                     variant="outline"
@@ -319,11 +405,140 @@ export function ProductsView({ initialProducts, context }: ProductsViewProps) {
                   >
                     Annuler
                   </Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Créer le produit"}
+                  <Button type="submit" disabled={loading} className="gap-2">
+                    {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Enregistrer le Produit
                   </Button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card className="w-full max-w-md shadow-2xl">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Modifier Article : {editingProduct.code}</CardTitle>
+                <CardDescription>Mettez à jour le tarif et conditionnement</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setEditingProduct(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleUpdateProduct} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editName">Désignation Commerciale *</Label>
+                  <Input
+                    id="editName"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editUnit">Conditionnement</Label>
+                  <select
+                    id="editUnit"
+                    value={editUnit}
+                    onChange={(e) =>
+                      setEditUnit(
+                        e.target.value as "sac" | "kg" | "bloc" | "tonne" | "caisse"
+                      )
+                    }
+                    className="flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm"
+                  >
+                    <option value="sac">Sac</option>
+                    <option value="kg">Kilogramme (kg)</option>
+                    <option value="bloc">Bloc</option>
+                    <option value="tonne">Tonne</option>
+                    <option value="caisse">Caisse</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="editWeight">Poids Nominal (kg) *</Label>
+                    <Input
+                      id="editWeight"
+                      type="number"
+                      step="0.1"
+                      min="0.1"
+                      value={editWeightKg}
+                      onChange={(e) => setEditWeightKg(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="editPrice">Prix Unitaire HT (TND) *</Label>
+                    <Input
+                      id="editPrice"
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      value={editPriceTnd}
+                      onChange={(e) => setEditPriceTnd(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setEditingProduct(null)}
+                  >
+                    Annuler
+                  </Button>
+                  <Button type="submit" disabled={loading} className="gap-2">
+                    {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Mettre à jour
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Delete Product Confirmation Modal */}
+      {deletingProduct && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card className="w-full max-w-sm shadow-2xl border-destructive/30">
+            <CardHeader>
+              <div className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-5 w-5" />
+                <CardTitle className="text-base">Confirmer la Suppression</CardTitle>
+              </div>
+              <CardDescription>
+                Êtes-vous sûr de vouloir supprimer l&apos;article <strong>{deletingProduct.name}</strong> ({deletingProduct.code}) ?
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeletingProduct(null)}
+              >
+                Annuler
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={loading}
+                onClick={handleDeleteProduct}
+                className="gap-2"
+              >
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Supprimer
+              </Button>
             </CardContent>
           </Card>
         </div>

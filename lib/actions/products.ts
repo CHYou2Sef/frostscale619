@@ -173,3 +173,38 @@ export async function toggleProductActiveAction(
 
   return { success: true, data: product as IceProduct };
 }
+
+/**
+ * Deletes an ice product. Restricted to owner or admin.
+ */
+export async function deleteProductAction(
+  productId: string
+): Promise<ActionResult<void>> {
+  const resolved = await resolveTenantContext();
+  if (!resolved.success) {
+    return { success: false, error: "Session non autorisée." };
+  }
+
+  if (!requireRole(resolved.context, ["owner", "admin"])) {
+    return { success: false, error: "Droits insuffisants pour supprimer un produit." };
+  }
+
+  const { organizationId } = resolved.context;
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("ice_products")
+    .delete()
+    .eq("id", productId)
+    .eq("organization_id", organizationId);
+
+  if (error) {
+    return {
+      success: false,
+      error: `Impossible de supprimer l'article: ${error.message}. Il est peut-être référencé dans des lots ou des mouvements de stock.`,
+    };
+  }
+
+  return { success: true, data: undefined };
+}
+

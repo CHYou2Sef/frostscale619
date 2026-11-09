@@ -247,3 +247,39 @@ export interface Client {
   updated_at: string;
 }
 
+export type PaymentStatus = "paid" | "pending" | "partial";
+export type PaymentMethod = "comptant" | "traite" | "cheque" | "virement";
+
+export interface SalesOrder {
+  id: string;
+  organization_id: string;
+  client_id: string;
+  product_id: string;
+  storage_location_id?: string | null;
+  order_number: string;
+  quantity_units: number;
+  total_weight_kg: number;
+  unit_price_tnd: number;
+  subtotal_ht_tnd: number;
+  vat_rate: number;
+  vat_amount_tnd: number;
+  stamp_duty_tnd: number;
+  total_ttc_tnd: number;
+  payment_status: PaymentStatus;
+  payment_method: PaymentMethod;
+  containers_loaned: number;
+  containers_returned: number;
+  delivery_notes?: string | null;
+  performed_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SalesOrderWithDetails extends SalesOrder {
+  client: Client;
+  product: IceProduct;
+  storage_location?: StorageLocation | null;
+  performer?: Profile | null;
+}
+
+
